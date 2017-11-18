@@ -27,8 +27,8 @@ class GraphRandomWalk():
     """
 
     def __init__(self, data):
-        self.adj_list = data
-        self.vertex_frequencies = {vertex : self.degree(vertex) for vertex in self.adj_list.keys()}
+        self.adj_list = data[0]
+        self.vertex_frequencies = data[1]
 
     @classmethod
     def from_filename(cls, filename):
@@ -38,12 +38,13 @@ class GraphRandomWalk():
           filename : path to file with edge list
         """
         adj_list = defaultdict(list)
+        frequencies = defaultdict(int)
         with open(filename, 'r') as file:
             edges = [tuple(map(int, line.split())) for line in file]
             for edge in edges:
                 adj_list[edge[0]].append(edge[1])
-                adj_list[edge[1]].append(edge[0])
-        return cls(adj_list)
+                frequencies[edge[1]] += 1
+        return cls((adj_list, frequencies))
 
     @classmethod
     def from_edgelist(cls, edgelist):
@@ -53,10 +54,11 @@ class GraphRandomWalk():
           edgelist : list of edges
         """
         adj_list = defaultdict(list)
+        frequencies = defaultdict(int)
         for edge in edgelist:
             adj_list[edge[0]].append(edge[1])
-            adj_list[edge[1]].append(edge[0])
-        return cls(adj_list)
+            frequencies[edge[1]] += 1
+        return cls((adj_list, frequencies))
 
     @property
     def vertices_count(self):
@@ -81,7 +83,7 @@ class GraphRandomWalk():
           edge : tuple of 2 vertex
         """
         self.adj_list[edge[0]].append(edge[1])
-        self.adj_list[edge[1]].append(edge[0])
+        self.vertex_frequencies[edge[1]] += 1
 
     def adj(self, vertex):
         """
@@ -91,7 +93,7 @@ class GraphRandomWalk():
         Returns
           List of vertices
         """
-        return self.adj_list[vertex]
+        return self.adj_list.get(vertex, [])
 
     def degree(self, vertex):
         """
@@ -99,7 +101,7 @@ class GraphRandomWalk():
         Args:
           vertex : vertex number
         """
-        return len(self.adj_list[vertex])
+        return len(self.adj_list.get(vertex, []))
 
     def random_walk(self, vertex, length):
         """
@@ -113,7 +115,7 @@ class GraphRandomWalk():
         sequence = [vertex]
         for _ in range(length - 1):
             adj = self.adj(vertex)
-            vertex = adj[np.random.randint(0, self.degree(vertex))]
+            vertex = adj[random.uniform(0, self.degree(vertex))]
             sequence.append(vertex)
         return sequence
 
@@ -128,8 +130,8 @@ class GraphRandomWalk():
         """
         sequnece = []
         for _ in range(bulk_size):
-            for vertex in self.adj_list.keys():
-                sequnece.append(self.random_walk(vertex, length))
+            for j in range(self.vertices_count):
+                sequnece.append(self.random_walk(j, length))
         return sequnece
 
 
@@ -244,16 +246,16 @@ class Node2Vec(Word2Vec):
 
     def __init__(self, graph=None, rw_length=40, bulk_size=10, size=100, alpha=0.025, window=5, min_count=True,
                  sample=1e-3, seed=1, workers=3, min_alpha=0.0001,
-                 sg=0, hs=0, negative=5, cbow_mean=1, hashfxn=hash, iter=5,
+                 sg=0, hs=0, negative=5, cbow_mean=1, hashfxn=hash, iter=5, null_word=0,
                  sorted_vocab=1, batch_words=MAX_WORDS_IN_BATCH, compute_loss=False):
         if (rw_length < 2):
             raise Exception("Length can't be less than 2")
         self.rw_length = rw_length
         self.bulk_size = bulk_size
-        super(Node2Vec, self).__init__(sentences=None, size=size, alpha=alpha, window=window, min_count=0,
-                                       sample=sample, seed=seed, workers=sample, min_alpha=min_alpha,
-                                       sg=sg, hs=hs, negative=negative, cbow_mean=cbow_mean, hashfxn=hashfxn,
-                                       iter=iter,compute_loss=compute_loss)
+        super(Node2Vec, self).__init__(None, size, alpha, window, 0,
+                                       sample, seed, workers, min_alpha,
+                                       sg, hs, negative, cbow_mean, hashfxn, iter, null_word,
+                                       None, sorted_vocab, batch_words, compute_loss)
 
         if graph != None:
             self.build_vocab(graph)
@@ -285,4 +287,3 @@ class Node2Vec(Word2Vec):
         sentences = graph.bulk_random_walk(self.rw_length, self.bulk_size)
         super(Node2Vec, self).train(sentences, total_examples=self.corpus_count,
                                     epochs=self.iter, start_alpha=self.alpha, end_alpha=self.min_alpha)
-                                    
