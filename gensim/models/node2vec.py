@@ -8,16 +8,21 @@ https://arxiv.org/pdf/1607.00653.pdf
 
 from abc import ABC, abstractmethod
 import random
+import logging
+from six.moves import xrange
 from collections import defaultdict
 from gensim.models.word2vec import Word2Vec
 from gensim.models.doc2vec import Doc2Vec
 import numpy as np
+from numpy import zeros, ones, empty, float32 as REAL
 try:
     from gensim.models.word2vec_inner import MAX_WORDS_IN_BATCH
 except ImportError:
     # failed... fall back to plain numpy (20-80x slower training than the above)
     MAX_WORDS_IN_BATCH = 10000
 
+
+logger = logging.getLogger(__name__)
 
 class GraphRandomWalk():
     """
@@ -27,8 +32,8 @@ class GraphRandomWalk():
     """
 
     def __init__(self, data):
-        self.adj_list = data[0]
-        self.vertex_frequencies = data[1]
+        self.adj_list = data
+        self.vertex_frequencies = {vertex : self.degree(vertex) for vertex in self.adj_list.keys()}
 
     @classmethod
     def from_filename(cls, filename):
@@ -38,13 +43,12 @@ class GraphRandomWalk():
           filename : path to file with edge list
         """
         adj_list = defaultdict(list)
-        frequencies = defaultdict(int)
         with open(filename, 'r') as file:
             edges = [tuple(map(int, line.split())) for line in file]
             for edge in edges:
                 adj_list[edge[0]].append(edge[1])
-                frequencies[edge[1]] += 1
-        return cls((adj_list, frequencies))
+                adj_list[edge[1]].append(edge[0])
+        return cls(adj_list)
 
     @classmethod
     def from_edgelist(cls, edgelist):
@@ -54,11 +58,10 @@ class GraphRandomWalk():
           edgelist : list of edges
         """
         adj_list = defaultdict(list)
-        frequencies = defaultdict(int)
         for edge in edgelist:
             adj_list[edge[0]].append(edge[1])
-            frequencies[edge[1]] += 1
-        return cls((adj_list, frequencies))
+            adj_list[edge[1]].append(edge[0])
+        return cls(adj_list)
 
     @property
     def vertices_count(self):
@@ -83,7 +86,7 @@ class GraphRandomWalk():
           edge : tuple of 2 vertex
         """
         self.adj_list[edge[0]].append(edge[1])
-        self.vertex_frequencies[edge[1]] += 1
+        self.adj_list[edge[1]].append(edge[0])
 
     def adj(self, vertex):
         """
@@ -93,7 +96,7 @@ class GraphRandomWalk():
         Returns
           List of vertices
         """
-        return self.adj_list.get(vertex, [])
+        return self.adj_list[vertex]
 
     def degree(self, vertex):
         """
@@ -101,7 +104,7 @@ class GraphRandomWalk():
         Args:
           vertex : vertex number
         """
-        return len(self.adj_list.get(vertex, []))
+        return len(self.adj_list[vertex])
 
     def random_walk(self, vertex, length):
         """
@@ -115,7 +118,7 @@ class GraphRandomWalk():
         sequence = [vertex]
         for _ in range(length - 1):
             adj = self.adj(vertex)
-            vertex = adj[random.uniform(0, self.degree(vertex))]
+            vertex = adj[np.random.randint(0, self.degree(vertex))]
             sequence.append(vertex)
         return sequence
 
@@ -130,8 +133,8 @@ class GraphRandomWalk():
         """
         sequnece = []
         for _ in range(bulk_size):
-            for j in range(self.vertices_count):
-                sequnece.append(self.random_walk(j, length))
+            for vertex in self.adj_list.keys():
+                sequnece.append(self.random_walk(vertex, length))
         return sequnece
 
 
@@ -246,16 +249,16 @@ class Node2Vec(Word2Vec):
 
     def __init__(self, graph=None, rw_length=40, bulk_size=10, size=100, alpha=0.025, window=5, min_count=True,
                  sample=1e-3, seed=1, workers=3, min_alpha=0.0001,
-                 sg=0, hs=0, negative=5, cbow_mean=1, hashfxn=hash, iter=5, null_word=0,
+                 sg=0, hs=0, negative=5, cbow_mean=1, hashfxn=hash, iter=5,
                  sorted_vocab=1, batch_words=MAX_WORDS_IN_BATCH, compute_loss=False):
         if (rw_length < 2):
             raise Exception("Length can't be less than 2")
         self.rw_length = rw_length
         self.bulk_size = bulk_size
-        super(Node2Vec, self).__init__(None, size, alpha, window, 0,
-                                       sample, seed, workers, min_alpha,
-                                       sg, hs, negative, cbow_mean, hashfxn, iter, null_word,
-                                       None, sorted_vocab, batch_words, compute_loss)
+        super(Node2Vec, self).__init__(sentences=None, size=size, alpha=alpha, window=window, min_count=0,
+                                       sample=sample, seed=seed, workers=sample, min_alpha=min_alpha,
+                                       sg=sg, hs=hs, negative=negative, cbow_mean=cbow_mean, hashfxn=hashfxn,
+                                       iter=iter,compute_loss=compute_loss)
 
         if graph != None:
             self.build_vocab(graph)
@@ -287,3 +290,19 @@ class Node2Vec(Word2Vec):
         sentences = graph.bulk_random_walk(self.rw_length, self.bulk_size)
         super(Node2Vec, self).train(sentences, total_examples=self.corpus_count,
                                     epochs=self.iter, start_alpha=self.alpha, end_alpha=self.min_alpha)
+                                    
+    def reset_weights(self):
+        """Reset all projection weights to an initial (untrained) state, but keep the existing vocabulary."""
+        logger.info("resetting layer weights")
+        self.wv.syn0 = empty((len(self.wv.vocab), self.vector_size), dtype=REAL)
+        # randomize weights vector by vector, rather than materializing a huge random matrix in RAM at once
+        for i in xrange(len(self.wv.vocab)):
+            # construct deterministic seed from word AND seed argument
+            self.wv.syn0[i] = self.seeded_vector(str(self.wv.index2word[i]) + str(self.seed))
+        if self.hs:
+            self.syn1 = zeros((len(self.wv.vocab), self.layer1_size), dtype=REAL)
+        if self.negative:
+            self.syn1neg = zeros((len(self.wv.vocab), self.layer1_size), dtype=REAL)
+        self.wv.syn0norm = None
+
+        self.syn0_lockf = ones(len(self.wv.vocab), dtype=REAL)  # zeros suppress learning
