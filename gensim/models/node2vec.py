@@ -33,7 +33,7 @@ class GraphRandomWalk():
 
     def __init__(self, data):
         self.adj_list = data
-        self.vertex_frequencies = {vertex : self.degree(vertex) for vertex in self.adj_list.keys()}
+        self.vertex_frequencies = {str(vertex) : self.degree(vertex) for vertex in self.adj_list.keys()}
 
     @classmethod
     def from_filename(cls, filename):
@@ -115,11 +115,11 @@ class GraphRandomWalk():
         Returns:
           List of vertices
         """
-        sequence = [vertex]
+        sequence = [str(vertex)]
         for _ in range(length - 1):
             adj = self.adj(vertex)
             vertex = adj[np.random.randint(0, self.degree(vertex))]
-            sequence.append(vertex)
+            sequence.append(str(vertex))
         return sequence
 
     def bulk_random_walk(self, length, bulk_size):
@@ -216,18 +216,18 @@ class GraphBiasedWalk(GraphRandomWalk):
         Returns:
           List of random walks, where random walk is a list of vertices
         """
-        sequence = [vertex]
+        sequence = [str(vertex)]
         prev_vertex = vertex
         current_vertex = self.adj(
             vertex)[random.uniform(0, self.degree(vertex))]
-        sequence.append(current_vertex)
+        sequence.append(str(current_vertex))
         for _ in range(length - 2):
             adj = self.adj(vertex)
             prob = self.probs[prev_vertex][current_vertex]
             prob = np.array(prob) / sum(prob)
             prev_vertex = current_vertex
             current_vertex = np.random.choice(adj, p=prob)
-            sequence.append(vertex)
+            sequence.append(str(vertex))
         return sequence
 
     def bulk_random_walk(self, length, bulk_size):
@@ -291,18 +291,3 @@ class Node2Vec(Word2Vec):
         super(Node2Vec, self).train(sentences, total_examples=self.corpus_count,
                                     epochs=self.iter, start_alpha=self.alpha, end_alpha=self.min_alpha)
                                     
-    def reset_weights(self):
-        """Reset all projection weights to an initial (untrained) state, but keep the existing vocabulary."""
-        logger.info("resetting layer weights")
-        self.wv.syn0 = empty((len(self.wv.vocab), self.vector_size), dtype=REAL)
-        # randomize weights vector by vector, rather than materializing a huge random matrix in RAM at once
-        for i in xrange(len(self.wv.vocab)):
-            # construct deterministic seed from word AND seed argument
-            self.wv.syn0[i] = self.seeded_vector(str(self.wv.index2word[i]) + str(self.seed))
-        if self.hs:
-            self.syn1 = zeros((len(self.wv.vocab), self.layer1_size), dtype=REAL)
-        if self.negative:
-            self.syn1neg = zeros((len(self.wv.vocab), self.layer1_size), dtype=REAL)
-        self.wv.syn0norm = None
-
-        self.syn0_lockf = ones(len(self.wv.vocab), dtype=REAL)  # zeros suppress learning
