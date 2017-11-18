@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
-# Copyright (C) 2013 Radim Rehurek <me@radimrehurek.com>
-# Licensed under the GNU LGPL v2.1 - http://www.gnu.org/licenses/lgpl.html
-
 """
 Produce node vectors with deep learning via DeepWalk algorithm or Node2Vec algorithm
 [1] Bryan Perozzi, Rami Al-Rfou, Steven Skiena. DeepWalk: Online Learning of Social Representations
@@ -227,6 +221,7 @@ class GraphBiasedWalk(GraphRandomWalk):
         for _ in range(length - 2):
             adj = self.adj(vertex)
             prob = self.probs[prev_vertex][current_vertex]
+            prob = np.array(prob) / sum(prob)
             prev_vertex = current_vertex
             current_vertex = np.random.choice(adj, p=prob)
             sequence.append(vertex)
