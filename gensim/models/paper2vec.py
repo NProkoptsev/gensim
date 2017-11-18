@@ -5,6 +5,7 @@ import random
 from collections import defaultdict, namedtuple, Sequence
 from gensim.models.word2vec import Word2Vec
 from gensim.models.doc2vec import Doc2Vec
+from node2vec import GraphDeepWalk, Node2Vec
 try:
     from gensim.models.word2vec_inner import MAX_WORDS_IN_BATCH
 except ImportError:
@@ -12,10 +13,40 @@ except ImportError:
     MAX_WORDS_IN_BATCH = 10000
 
 
-class Paper2Vec:
-    """
-    Class for training paper graph and mapping input papers to some vector
-    representation
+class Paper2Vec(object):
+    """Class for training paper graph.
+
+    It combines Doc2Vec and Word2Vec with Node2Vec to produce mapping
+    for papers into vectors. This class becomes a dict and takes integers or
+    strings as indexes.
+    Typical usage is:
+    * build dictionaries with parameters for Word2Vec and Doc2Vec.
+        See documentation for W2V and D2V and Paper2Vec's paper:
+        https://arxiv.org/abs/1703.06587
+    * make an instance and provide papers and citation_graph structures or
+        file names: model = Paper2Vec(file, cit_file, blah)
+    * use model.load_data(blah) to change links of data. If you do not change
+        data, it's a redundant action. But you can change data not
+        re-initializing the class.
+    * whether you changed data or not, call model.train(blah). train() takes
+        all parameters which are taken by initialization except links to data.
+
+    Attributes:
+        papers: Papers represented as
+            [('words'=['word or num of word from BOW', ...], 'tags'=[ID]), # namedtuple
+                ...
+            )]
+        citation_graph: A list if tuples (edges) such as [(ID1, ID2), ...]
+        papers_file: A text file with the format
+            ID1 bag_of_words tag
+            ...
+        citation_graph_file: A text file where there is an edge on every line
+            just like ID1[space]ID2.
+        d2v_dict: A dictionary with parameters for Doc2Vec.
+        w2v_dict: A dictionary with parameters for Word2Vec.
+        reduce_alpha: A boolean variable for retraining model or not with
+            reducing alpha
+        seed: An integer which will be set to random initialization
     """
 
     def __init__(self, papers=None, citation_graph=None, papers_file=None,
@@ -23,10 +54,7 @@ class Paper2Vec:
                  seed=None, reduce_memory=False, topn=2,
                  **kwargs):
         """
-        `papers` is papers represented as (Name of DB what ever you like)
-            [('Name of Database'=['Num of word', ...], 'word tags'=[ID]), # namedtuple
-                ...
-            )]
+        `papers` is
 
         `alpha` is the initial learning rate (will linearly drop to `min_alpha`
             as training progresses)
@@ -40,7 +68,7 @@ class Paper2Vec:
         `papers_file` is a text file with lines as foolowing:
             ID_of_paper bag_of_words tag
 
-        `citation_graph` list if tuples (edges) such as [(ID1, ID2), ...]
+        `citation_graph`
 
         `window` **TODO**
 
@@ -147,111 +175,6 @@ class Paper2Vec:
             return self.__paper2vec[index]
         else:
             raise TypeError('index must be string or integer!')
-
-
-class Graph(ABC):
-    @abstractmethod
-    @property
-    def vertices_count(self):
-        pass
-
-    @abstractmethod
-    def add_edge(self, edge):
-        pass
-
-    @abstractmethod
-    def adj(self, vertex):
-        pass
-
-    @abstractmethod
-    def degree(self, vertex):
-        pass
-
-    @abstractmethod
-    def bulk_random_walk(self, length, bulk_size):
-        pass
-
-
-class GraphDeepWalk(Graph):
-
-    def __init__(self, filename):
-        self.adj_list = defaultdict(list)
-        self.frequences = defaultdict(int)
-        with open(filename, 'r') as file:
-            edges = [tuple(map(int, line.split())) for line in file]
-            for edge in edges:
-                self.adj_list[edge[0]].append(edge[1])
-                self.frequences[edge[1]] += 1
-                # self.adj_list.setdefault(edge[1], []).append(edge[0])
-
-    @property
-    def vertices_count(self):
-        return len(self.adj_list)
-
-    def add_edge(self, edge):
-        self.adj_list[edge[0]].append(edge[1])
-        self.frequences[edge[1]] += 1
-        # self.adj_list.setdefault(edge[1], []).append(edge[0])
-
-    def adj(self, vertex):
-        return self.adj_list.get(vertex, [])
-
-    def degree(self, vertex):
-        return len(self.adj_list.get(vertex, []))
-
-    def random_walk(self, vertex, length):
-        sequence = [vertex]
-        for _ in range(length):
-            adj = self.adj(vertex)
-            vertex = adj[random.uniform(0, self.degree(vertex))]
-            sequence.append(vertex)
-        return sequence
-
-    def bulk_random_walk(self, length, bulk_size):
-        sequnece = []
-        for _ in range(bulk_size):
-            for j in range(self.vertices_count):
-                sequnece.append(self.random_walk(j, length))
-        return sequnece
-
-
-class Node2Vec(Word2Vec):
-    def __init__(self, graph=None, rw_length=40, bulk_size=10, size=100, alpha=0.025, window=5, min_count=True,
-                 sample=1e-3, seed=1, workers=3, min_alpha=0.0001,
-                 sg=0, hs=0, negative=5, cbow_mean=1, hashfxn=hash, iter=5, null_word=0,
-                 sorted_vocab=1, batch_words=MAX_WORDS_IN_BATCH, compute_loss=False):
-        self.rw_length = rw_length
-        self.bulk_size = bulk_size
-        super(Node2Vec, self).__init__(None, size, alpha, window, 0,
-                                       sample, seed, workers, min_alpha,
-                                       sg, hs, negative, cbow_mean, hashfxn, iter, null_word,
-                                       None, sorted_vocab, batch_words, compute_loss)
-
-        if graph != None:
-            if not isinstance(graph, Graph):
-                raise Exception('Not correct graph')
-            self.build_vocab(graph)
-            self.train(graph, total_examples=self.corpus_count,
-                       epochs=self.iter, start_alpha=self.alpha, end_alpha=self.min_alpha)
-
-    def build_vocab(self, graph, keep_raw_vocab=False, update=False):
-        frequences = graph.frequences
-        corpus_count = self.bulk_size * graph.vertices_count
-        super(Node2Vec, self).build_vocab_from_freq(
-            frequences, keep_raw_vocab, corpus_count, None, update)
-
-    def build_vocab_from_freq(self, word_freq, keep_raw_vocab=False, corpus_count=None, trim_rule=None, update=False):
-        raise Exception('Not supported, use build_vocab() instead')
-
-    def train(self, graph, total_examples=None, total_words=None,
-              epochs=None, start_alpha=None, end_alpha=None, word_count=0,
-              queue_factor=2, report_delay=1.0, compute_loss=None):
-        if not isinstance(graph, Graph):
-            raise Exception('Not correct graph')
-        sentences = graph.bulk_random_walk(self.rw_length, self.bulk_size)
-        super(Node2Vec, self).train(sentences, total_examples=self.corpus_count,
-                                    epochs=self.iter, start_alpha=self.alpha, end_alpha=self.min_alpha)
-
 
 class _Papers:
     """
