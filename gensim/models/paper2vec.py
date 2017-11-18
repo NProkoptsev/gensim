@@ -1,11 +1,14 @@
-""" Paper2Vec"""
+""" Paper2Vec
+Encode papers into vectors!
+Implementation of the paper: https://arxiv.org/abs/1703.06587
+"""
 from __future__ import division, print_function
 from abc import ABC, abstractmethod
 import random
 from collections import defaultdict, namedtuple, Sequence
 from gensim.models.word2vec import Word2Vec
 from gensim.models.doc2vec import Doc2Vec
-from node2vec import GraphDeepWalk, Node2Vec
+from node2vec import GraphRandomWalk, Node2Vec
 try:
     from gensim.models.word2vec_inner import MAX_WORDS_IN_BATCH
 except ImportError:
@@ -47,41 +50,17 @@ class Paper2Vec(object):
         reduce_alpha: A boolean variable for retraining model or not with
             reducing alpha
         seed: An integer which will be set to random initialization
+        reduce_memory: A boolean variable, set True will make to try hard
+            to reduce memory and delete unused data structures.
+        topn: An integer, number of neighbours in Doc2Vec to be added to
+            citation graph.
     """
 
     def __init__(self, papers=None, citation_graph=None, papers_file=None,
                  citation_graph_file=None, d2v_dict=None, w2v_dict=None, reduce_alpha=False,
                  seed=None, reduce_memory=False, topn=2,
                  **kwargs):
-        """
-        `papers` is
 
-        `alpha` is the initial learning rate (will linearly drop to `min_alpha`
-            as training progresses)
-
-        `min_alpha` is minimum learning rate
-
-        `citation_graph` is the list of tuples of 2 IDs, which are actually
-            edges. What is if paper with ID 1234 cites paper with ID 4321, then
-            [(1234, 4321), ...]
-
-        `papers_file` is a text file with lines as foolowing:
-            ID_of_paper bag_of_words tag
-
-        `citation_graph`
-
-        `window` **TODO**
-
-        `citation_graph_file` is a text file where every edge in
-            ID1 ID2
-            format (see cicitation_graph) is represented on every line
-
-        `seed` is set for reproducing random activities.
-            Will be set before every random generator
-
-        `topn` amount of most similar papers to be added from Doc2Vec
-        `workers` is amount of threads for training the model
-        """
         self.__reduce_memory = reduce_memory
         self.__d2v_dict = d2v_dict
         self.__w2v_dict = w2v_dict
@@ -98,15 +77,27 @@ class Paper2Vec(object):
 
     def load_data(self, papers=None, citation_graph=None, papers_file=None,
                   citation_graph_file=None):
-        """
-        Will rewrite already set data, if it was set in initialization.
+        """Set file names or data structures for papers and citations.
 
         DO NOT populate your memory with data, hence, use it if you
         want to change data processed.
-
         Files have higher priority and will substutute given datastructures.
         For example, when both `papers` and `papers_file` are set, the
         information will be taken from `papers_file`.
+
+        Args:
+            papers: Papers represented as
+                [('words'=['word or num of word from BOW', ...], 'tags'=[ID]), # namedtuple
+                    ...
+                )]
+            citation_graph: A list if tuples (edges) such as [(ID1, ID2), ...]
+            papers_file: A text file with the format
+                ID1 bag_of_words tag
+                ...
+            citation_graph_file: A text file where there is an edge on every line
+                just like ID1[space]ID2.
+        Returns:
+            None
         """
 
         if papers_file is not None:
@@ -129,9 +120,14 @@ class Paper2Vec(object):
 
         self.__paper2vec = dict()
 
+
     def train(self):
-        """
-        Start memory population with data and train models
+        """Start memory population with data and train models.
+
+        Args:
+            None
+        Returns:
+            None
         """
         # Populate environment with parced data
         if self.__papers_as_file is not None:
@@ -141,9 +137,9 @@ class Paper2Vec(object):
 
         # Init citation graph
         if self.__citation_graph_file is not None:
-            self.__graph = GraphDeepWalk.from_file(self.__citation_graph_as_file)
+            self.__graph = GraphRandomWalk.from_file(self.__citation_graph_as_file)
         else:
-            self.__graph = GraphDeepWalk.from_egdelist(self.__citation_graph_as_list)
+            self.__graph = GraphRandomWalk.from_egdelist(self.__citation_graph_as_list)
 
         # Build Doc2Vec
         model_d2v = Doc2Vec(**d2v_dict)
@@ -174,24 +170,28 @@ class Paper2Vec(object):
         else:
             raise TypeError('index must be string or integer!')
 
-class _Papers:
+class _Papers(object):
+    """A class for papers encapsulation.
+
+    Attributes:
+        papers: A datastructure (list of namen tuples, see Paper2Vec) with papers
+        papers_file: A string with papers file name (see Paper2Vec)
     """
-    Make class for papers and labels encapsulation
-    """
-    def __init__(self):
-        """
-        `papers` is papers in described at Paper2Vec format
-        `papers_file` is pappers file in described at Paper2Vec format
-        """
+    def __init__(self, papers=None, papers_file=None):
         if papers is not None:
             self.__papers = papers
         elif papers_file is not None:
             self.__papers = __parse_papers_file(papers_file)
 
     def __parse_papers_file(self, papers_file):
-        """
-        Processe `papers_file` into `papers`
+        """Processe `papers_file` into `papers`
         Idea of code from https://github.com/asxzy/paper2vec-gensim/blob/master/gensim.ipynb
+
+        Args:
+            papers_file: A string with papers file name (see Paper2Vec)
+
+        Returns:
+            dataset: A datastructure (list of namen tuples, see Paper2Vec) with papers
         """
         dataset = []
         paper = namedtuple('paper', 'words ID')
@@ -208,18 +208,43 @@ class _Papers:
 
     @property
     def papers(self):
+        """Getter for papers
+
+        Args:
+            None
+
+        Returns:
+            __papers: A list of named tuples
+        """
         return self.__papers
 
     @papers.setter
     def papers(self, papers_var):
+        """Setter for papers.
+
+        Args:
+            papers_var: A string for file name or a list of named tuples
+
+        Returns:
+            None
+        """
         if isinstance(papers_var, str):
             self.__papers = __parse_papers_file(self, papers_var)
         else:
             self.__papers = papers_var.copy()
 
     def shuffle():
+        """Shuffles papers dataset for alpha
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         random.shuffle(self.__papers)
 
 
+"""Exception when user did not provide full data"""
 class MissingData(Exception):
     pass
