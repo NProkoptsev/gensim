@@ -129,9 +129,7 @@ class Paper2Vec(object):
 
         self.__paper2vec = dict()
 
-    def train(self, d2v_dict=self.__d2v_dict, w2v_dict=self.__w2v_dict,
-              seed=self.__seed, reduce_alpha=self.__reduce_alpha,
-              topn=self.__topn):
+    def train(self):
         """
         Start memory population with data and train models
         """
