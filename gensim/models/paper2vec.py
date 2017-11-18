@@ -136,19 +136,19 @@ class Paper2Vec(object):
             self.__papers.papers = self.__papers_as_list
 
         # Init citation graph
-        if self.__citation_graph_file is not None:
+        if self.__citation_graph_as_file is not None:
             self.__graph = GraphRandomWalk.from_file(self.__citation_graph_as_file)
         else:
             self.__graph = GraphRandomWalk.from_egdelist(self.__citation_graph_as_list)
 
         # Build Doc2Vec
-        model_d2v = Doc2Vec(**d2v_dict)
+        model_d2v = Doc2Vec(**self.__d2v_dict)
         model_d2v.build_vocab(self.__papers.papers)
-        if seed is not None:
-            random.set_seed(seed)
+        if self.__seed is not None:
+            random.seed(self.__seed)
 
         # Reduce alpha
-        if reduce_alpha:
+        if self.__reduce_alpha:
             for i in range(10):
                 self.__papers.shuffle()
                 model_d2v.alpha = 0.025-0.002*i
@@ -157,15 +157,15 @@ class Paper2Vec(object):
 
         # Add similar from d2v edges to graph
         for paper in self.__papers.papers:
-            for node in model.docvecs.most_similar(paper.ID,topn=topn):
+            for node in model_d2v.docvecs.most_similar(paper.ID,topn=self.__topn):
                 edge = (paper.ID[0], node[0])
                 self.__graph.add_edge(edge)
 
         # Final steps. Node2Vec
-        self.__paper2vec = Node2Vec(graph=self.__graph, **w2v_dict)
+        self.__paper2vec = Node2Vec(graph=self.__graph, **self.__w2v_dict)
 
     def __getitem__(self, index):
-        if isinstance(index, string_types + integer_types + (integer,)):
+        if isinstance(index, [str, int]):
             return self.__paper2vec[index]
         else:
             raise TypeError('index must be string or integer!')
@@ -181,7 +181,7 @@ class _Papers(object):
         if papers is not None:
             self.__papers = papers
         elif papers_file is not None:
-            self.__papers = __parse_papers_file(papers_file)
+            self.__papers = self.__parse_papers_file(papers_file)
 
     def __parse_papers_file(self, papers_file):
         """Processe `papers_file` into `papers`
