@@ -1,8 +1,8 @@
 """ Paper2Vec"""
-
+from __future__ import division, print_function
 from abc import ABC, abstractmethod
 import random
-from collections import defaultdict
+from collections import defaultdict, namedtuple, Sequence
 from gensim.models.word2vec import Word2Vec
 from gensim.models.doc2vec import Doc2Vec
 try:
@@ -114,15 +114,3 @@ class Node2Vec(Word2Vec):
         sentences = graph.bulk_random_walk(self.rw_length, self.bulk_size)
         super(Node2Vec, self).train(sentences, total_examples=self.corpus_count,
                                     epochs=self.iter, start_alpha=self.alpha, end_alpha=self.min_alpha)
-
-
-class Paper2Vec():
-    def __init__(self, doc2vec_model, node2vec_model):
-        pass
-
-    def train(self, citations_filename, bow_filenmae):
-        '''1. Use doc2vec
-           2. Init graph
-           3. Add new edges to graph
-           4. Use Node2Vec '''
-        pass
