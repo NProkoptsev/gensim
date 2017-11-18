@@ -8,7 +8,7 @@ import random
 from collections import defaultdict, namedtuple, Sequence
 from gensim.models.word2vec import Word2Vec
 from gensim.models.doc2vec import Doc2Vec
-from node2vec import GraphRandomWalk, Node2Vec
+from gensim.models.node2vec import GraphRandomWalk, Node2Vec
 try:
     from gensim.models.word2vec_inner import MAX_WORDS_IN_BATCH
 except ImportError:
@@ -229,11 +229,11 @@ class _Papers(object):
             None
         """
         if isinstance(papers_var, str):
-            self.__papers = __parse_papers_file(self, papers_var)
+            self.__papers = self.__parse_papers_file(papers_var)
         else:
             self.__papers = papers_var.copy()
 
-    def shuffle():
+    def shuffle(self):
         """Shuffles papers dataset for alpha
 
         Args:
