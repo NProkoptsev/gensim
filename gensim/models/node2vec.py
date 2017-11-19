@@ -6,22 +6,16 @@ https://arxiv.org/abs/1403.6652
 https://arxiv.org/pdf/1607.00653.pdf
 """
 
-from abc import ABC, abstractmethod
-import random
-import logging
-from six.moves import xrange
 from collections import defaultdict
 from gensim.models.word2vec import Word2Vec
-from gensim.models.doc2vec import Doc2Vec
 import numpy as np
-from numpy import zeros, ones, empty, float32 as REAL
 try:
     from gensim.models.word2vec_inner import MAX_WORDS_IN_BATCH
 except ImportError:
     # failed... fall back to plain numpy (20-80x slower training than the above)
     MAX_WORDS_IN_BATCH = 10000
 
-
+import logging
 logger = logging.getLogger(__name__)
 
 class GraphRandomWalk():
@@ -33,7 +27,8 @@ class GraphRandomWalk():
 
     def __init__(self, data):
         self.adj_list = data
-        self.vertex_frequencies = {str(vertex) : self.degree(vertex) for vertex in self.adj_list.keys()}
+        self.vertex_frequencies = {str(vertex): self.degree(
+            vertex) for vertex in self.adj_list.keys()}
 
     @classmethod
     def from_filename(cls, filename):
@@ -117,8 +112,7 @@ class GraphRandomWalk():
         """
         sequence = [str(vertex)]
         for _ in range(length - 1):
-            adj = self.adj(vertex)
-            vertex = adj[np.random.randint(0, self.degree(vertex))]
+            vertex = np.random.choice(self.adj(vertex))
             sequence.append(str(vertex))
         return sequence
 
@@ -172,7 +166,7 @@ class GraphBiasedWalk(GraphRandomWalk):
             """
             new_dict = {}
             prev_adj = self.graph.adj_list[prev_node]
-            for node, cur_adj in self.graph.adj_list:
+            for node, cur_adj in self.graph.adj_list.items():
                 new_list = []
                 for adj_node in cur_adj:
                     if adj_node == prev_node:
@@ -218,23 +212,22 @@ class GraphBiasedWalk(GraphRandomWalk):
         """
         sequence = [str(vertex)]
         prev_vertex = vertex
-        current_vertex = self.adj(
-            vertex)[random.uniform(0, self.degree(vertex))]
+        current_vertex = np.random.choice(self.adj(vertex))
         sequence.append(str(current_vertex))
         for _ in range(length - 2):
-            adj = self.adj(vertex)
+            adj = self.adj(current_vertex)
             prob = self.probs[prev_vertex][current_vertex]
             prob = np.array(prob) / sum(prob)
             prev_vertex = current_vertex
             current_vertex = np.random.choice(adj, p=prob)
-            sequence.append(str(vertex))
+            sequence.append(str(current_vertex))
         return sequence
 
     def bulk_random_walk(self, length, bulk_size):
         sequnece = []
         for _ in range(bulk_size):
-            for j in range(self.vertices_count):
-                sequnece.append(self.random_walk(j, length))
+            for vertex in self.graph.adj_list.keys():
+                sequnece.append(self.random_walk(vertex, length))
         return sequnece
 
 
@@ -247,7 +240,7 @@ class Node2Vec(Word2Vec):
       bulk_size : number of random walks per node
     """
 
-    def __init__(self, graph=None, rw_length=40, bulk_size=10, size=100, alpha=0.025, window=5, min_count=True,
+    def __init__(self, graph=None, rw_length=40, bulk_size=10, size=100, alpha=0.025, window=5,
                  sample=1e-3, seed=1, workers=3, min_alpha=0.0001,
                  sg=0, hs=0, negative=5, cbow_mean=1, hashfxn=hash, iter=5,
                  sorted_vocab=1, batch_words=MAX_WORDS_IN_BATCH, compute_loss=False):
@@ -256,9 +249,9 @@ class Node2Vec(Word2Vec):
         self.rw_length = rw_length
         self.bulk_size = bulk_size
         super(Node2Vec, self).__init__(sentences=None, size=size, alpha=alpha, window=window, min_count=0,
-                                       sample=sample, seed=seed, workers=sample, min_alpha=min_alpha,
+                                       sample=sample, seed=seed, workers=workers, min_alpha=min_alpha,
                                        sg=sg, hs=hs, negative=negative, cbow_mean=cbow_mean, hashfxn=hashfxn,
-                                       iter=iter,compute_loss=compute_loss)
+                                       iter=iter, compute_loss=compute_loss)
 
         if graph != None:
             self.build_vocab(graph)
@@ -288,6 +281,5 @@ class Node2Vec(Word2Vec):
           graph : instance of GraphRandomWalk
         """
         sentences = graph.bulk_random_walk(self.rw_length, self.bulk_size)
-        super(Node2Vec, self).train(sentences, total_examples=self.corpus_count,
+        super(Node2Vec, self).train(sentences, total_examples=total_examples,
                                     epochs=self.iter, start_alpha=self.alpha, end_alpha=self.min_alpha)
-                                    
