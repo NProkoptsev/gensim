@@ -137,9 +137,9 @@ class Paper2Vec(object):
 
         # Init citation graph
         if self.__citation_graph_as_file is not None:
-            self.__graph = GraphRandomWalk.from_file(self.__citation_graph_as_file)
+            self.__graph = GraphRandomWalk.from_filename(self.__citation_graph_as_file)
         else:
-            self.__graph = GraphRandomWalk.from_egdelist(self.__citation_graph_as_list)
+            self.__graph = GraphRandomWalk.from_edgelist(self.__citation_graph_as_list)
 
         # Build Doc2Vec
         model_d2v = Doc2Vec(**self.__d2v_dict)
