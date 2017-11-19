@@ -157,8 +157,8 @@ class Paper2Vec(object):
 
         # Add similar from d2v edges to graph
         for paper in self.__papers.papers:
-            for node in model_d2v.docvecs.most_similar(paper.ID,topn=self.__topn):
-                edge = (paper.ID[0], node[0])
+            for node in model_d2v.docvecs.most_similar(paper.tags,topn=self.__topn):
+                edge = (paper.tags[0], node[0])
                 self.__graph.add_edge(edge)
 
         # Final steps. Node2Vec
@@ -194,7 +194,7 @@ class _Papers(object):
             dataset: A datastructure (list of namen tuples, see Paper2Vec) with papers
         """
         dataset = []
-        paper = namedtuple('paper', 'words ID')
+        paper = namedtuple('paper', 'words tags')
         with open(papers_file) as f:
             for line in f:
                 line = line.split()
