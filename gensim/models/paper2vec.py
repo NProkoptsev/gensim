@@ -149,10 +149,12 @@ class Paper2Vec(object):
             random.seed(self.__seed)
 
         # Add similar from d2v edges to graph
-        # for paper in self.__papers.papers:
-        #     for node in model_d2v.docvecs.most_similar(paper.tags, topn=self.__topn):
-        #         edge = (int(paper.tags[0]), int(node[0]))
-        #         self.__graph.add_edge(edge)
+        if self.__topn:
+            for paper in self.__papers.papers:
+                for node in model_d2v.docvecs.most_similar(paper.tags, topn=self.__topn):
+                    edge = (int(paper.tags[0]), int(node[0]))
+                    print(edge)
+                    self.__graph.add_edge(edge)
 
         # Final steps. Node2Vec
         self.__paper2vec = Node2Vec(**self.__w2v_dict)

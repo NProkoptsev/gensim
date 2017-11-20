@@ -31,12 +31,12 @@ class GraphRandomWalk():
         Args:
           filename : path to file with edge list
         """
-        adj_list = defaultdict(list)
+        adj_list = defaultdict(set)
         with open(filename, 'r') as file:
             edges = [tuple(map(int, line.split())) for line in file]
             for edge in edges:
-                adj_list[edge[0]].append(edge[1])
-                adj_list[edge[1]].append(edge[0])
+                adj_list[edge[0]].add(edge[1])
+                adj_list[edge[1]].add(edge[0])
         return cls(adj_list)
 
     @classmethod
@@ -46,10 +46,10 @@ class GraphRandomWalk():
         Args:
           edgelist : list of edges
         """
-        adj_list = defaultdict(list)
+        adj_list = defaultdict(set)
         for edge in edgelist:
-            adj_list[edge[0]].append(edge[1])
-            adj_list[edge[1]].append(edge[0])
+            adj_list[edge[0]].add(edge[1])
+            adj_list[edge[1]].add(edge[0])
         return cls(adj_list)
 
     @property
@@ -74,8 +74,8 @@ class GraphRandomWalk():
         Args:
           edge : tuple of 2 vertex
         """
-        self.adj_list[edge[0]].append(edge[1])
-        self.adj_list[edge[1]].append(edge[0])
+        self.adj_list[edge[0]].add(edge[1])
+        self.adj_list[edge[1]].add(edge[0])
 
     def adj(self, vertex):
         """
@@ -85,7 +85,7 @@ class GraphRandomWalk():
         Returns
           List of vertices
         """
-        return self.adj_list[vertex]
+        return tuple(self.adj_list[vertex])
 
     def degree(self, vertex):
         """
