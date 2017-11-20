@@ -72,7 +72,7 @@ class Paper2Vec(object):
 
         self.__papers_as_list = papers
         self.__papers_as_file = papers_file
-        self.__papers = _Papers()
+        self.__papers = _Papers(papers=papers, papers_file=papers_file)
         self.__citation_graph_as_list = citation_graph
         self.__citation_graph_as_file = citation_graph_file
 
@@ -116,7 +116,7 @@ class Paper2Vec(object):
             self.__citation_graph_as_file = citation_graph_file
         elif citation_graph is not None:
             if self.__reduce_memory:
-                self.citation_graph_file = None
+                self.__citation_graph_as_file = None
             self.__citation_graph_as_list = citation_graph
 
         self.__paper2vec = dict()
