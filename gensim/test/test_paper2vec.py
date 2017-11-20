@@ -39,6 +39,7 @@ class TestPaper2VecModel(unittest.TestCase):
         p2v = paper2vec.Paper2Vec()
         p2v.load_data(papers_file = datapath_content, citation_graph_file = datapath_cites)
 
+    # Test training if initialized from files
     #def test_train_from_files(self):
     #    d2v_dict = {'alpha': 0.025, 'window': 10, 'min_count': 10, 'min_alpha': 0.025, 'size': 100}
     #    w2v_dict = {'size': 100, 'window': 5}
@@ -47,12 +48,24 @@ class TestPaper2VecModel(unittest.TestCase):
     #    p2v.train()
 
     def test_train(self):
-        p2v = paper2vec.Paper2Vec(papers = contents_test, citation_graph = citation_test,
-        d2v_dict = d2v_params, w2v_dict = w2v_params)
+        p2v = paper2vec.Paper2Vec(papers = contents_test, citation_graph = citation_test, 
+            d2v_dict = d2v_params, w2v_dict = w2v_params)
         p2v.train()
-
-    def test_predict(self):
+    
+    def test_save_model_to_file(self):
         pass
+
+    def test_get_item(self):
+        p2v = paper2vec.Paper2Vec(papers = contents_test, citation_graph = citation_test, 
+            d2v_dict = d2v_params, w2v_dict = w2v_params)
+        p2v.train()
+        print(p2v['31336'])
+
+    def test_get_similar(self):
+        p2v = paper2vec.Paper2Vec(papers = contents_test, citation_graph = citation_test, 
+            d2v_dict = d2v_params, w2v_dict = w2v_params)
+        p2v.train()
+        print(p2v.pv['31336'])
 
 if __name__ == "__main__":
     unittest.main()
