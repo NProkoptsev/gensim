@@ -145,7 +145,6 @@ class Paper2Vec(object):
 
         # Build Doc2Vec
         model_d2v = Doc2Vec(documents=self.__papers.papers, **self.__d2v_dict)
-        model_d2v.build_vocab(sentences=self.__papers.papers)
         if self.__seed is not None:
             random.seed(self.__seed)
 
