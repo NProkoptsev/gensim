@@ -18,6 +18,7 @@ except ImportError:
 import logging
 logger = logging.getLogger(__name__)
 
+
 class GraphRandomWalk():
     """
     Class for creating random walks on graph
@@ -27,8 +28,6 @@ class GraphRandomWalk():
 
     def __init__(self, data):
         self.adj_list = data
-        self.vertex_frequencies = {str(vertex): self.degree(
-            vertex) for vertex in self.adj_list.keys()}
 
     @classmethod
     def from_filename(cls, filename):
@@ -72,7 +71,7 @@ class GraphRandomWalk():
         Returns:
           List of frequencees of size vertices_count
         """
-        return self.vertex_frequencies
+        return {str(vertex): self.degree(vertex) for vertex in self.adj_list.keys()}
 
     def add_edge(self, edge):
         """
@@ -243,7 +242,7 @@ class Node2Vec(Word2Vec):
     def __init__(self, graph=None, rw_length=40, bulk_size=10, size=100, alpha=0.025, window=5,
                  sample=1e-3, seed=1, workers=3, min_alpha=0.0001,
                  sg=0, hs=0, negative=5, cbow_mean=1, hashfxn=hash, iter=5,
-                 sorted_vocab=1, batch_words=MAX_WORDS_IN_BATCH, compute_loss=False):
+                 batch_words=MAX_WORDS_IN_BATCH, compute_loss=False):
         if (rw_length < 2):
             raise Exception("Length can't be less than 2")
         self.rw_length = rw_length
@@ -251,12 +250,12 @@ class Node2Vec(Word2Vec):
         super(Node2Vec, self).__init__(sentences=None, size=size, alpha=alpha, window=window, min_count=0,
                                        sample=sample, seed=seed, workers=workers, min_alpha=min_alpha,
                                        sg=sg, hs=hs, negative=negative, cbow_mean=cbow_mean, hashfxn=hashfxn,
-                                       iter=iter, compute_loss=compute_loss)
+                                       iter=iter, sorted_vocab=0, compute_loss=compute_loss)
 
         if graph != None:
             self.build_vocab(graph)
-            self.train(graph, total_examples=self.corpus_count,
-                       epochs=self.iter, start_alpha=self.alpha, end_alpha=self.min_alpha)
+            self.train(graph, epochs=self.iter,
+                       start_alpha=self.alpha, end_alpha=self.min_alpha)
 
     def build_vocab(self, graph, keep_raw_vocab=False, update=False):
         """
@@ -272,8 +271,7 @@ class Node2Vec(Word2Vec):
     def build_vocab_from_freq(self, word_freq, keep_raw_vocab=False, corpus_count=None, trim_rule=None, update=False):
         raise Exception('Not supported, use build_vocab() instead')
 
-    def train(self, graph, total_examples=None, total_words=None,
-              epochs=None, start_alpha=None, end_alpha=None, word_count=0,
+    def train(self, graph, epochs=None, start_alpha=None, end_alpha=None,
               queue_factor=2, report_delay=1.0, compute_loss=None):
         """
         Update the model's neural weights from a list of random walks
@@ -281,5 +279,6 @@ class Node2Vec(Word2Vec):
           graph : instance of GraphRandomWalk
         """
         sentences = graph.bulk_random_walk(self.rw_length, self.bulk_size)
-        super(Node2Vec, self).train(sentences, total_examples=total_examples,
-                                    epochs=self.iter, start_alpha=self.alpha, end_alpha=self.min_alpha)
+        super(Node2Vec, self).train(sentences, total_examples=self.corpus_count,
+                                    epochs=epochs, start_alpha=start_alpha, end_alpha=end_alpha,
+                                    queue_factor=queue_factor, report_delay=report_delay, compute_loss=compute_loss)

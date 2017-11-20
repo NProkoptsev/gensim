@@ -9,6 +9,7 @@ from collections import defaultdict, namedtuple, Sequence
 from gensim.models.word2vec import Word2Vec
 from gensim.models.doc2vec import Doc2Vec
 from gensim.models.node2vec import GraphRandomWalk, Node2Vec
+from six import string_types
 try:
     from gensim.models.word2vec_inner import MAX_WORDS_IN_BATCH
 except ImportError:
@@ -74,7 +75,6 @@ class Paper2Vec(object):
         self.__citation_graph_as_list = citation_graph
         self.__citation_graph_as_file = citation_graph_file
 
-
     def load_data(self, papers=None, citation_graph=None, papers_file=None,
                   citation_graph_file=None):
         """Set file names or data structures for papers and citations.
@@ -120,7 +120,6 @@ class Paper2Vec(object):
 
         self.__paper2vec = dict()
 
-
     def train(self):
         """Start memory population with data and train models.
 
@@ -137,38 +136,50 @@ class Paper2Vec(object):
 
         # Init citation graph
         if self.__citation_graph_as_file is not None:
-            self.__graph = GraphRandomWalk.from_filename(self.__citation_graph_as_file)
+            self.__graph = GraphRandomWalk.from_filename(
+                self.__citation_graph_as_file)
         else:
-            self.__graph = GraphRandomWalk.from_edgelist(self.__citation_graph_as_list)
+            self.__graph = GraphRandomWalk.from_edgelist(
+                self.__citation_graph_as_list)
 
         # Build Doc2Vec
         model_d2v = Doc2Vec(**self.__d2v_dict)
         model_d2v.build_vocab(self.__papers.papers)
         if self.__seed is not None:
             random.seed(self.__seed)
-
         # Reduce alpha
         if self.__reduce_alpha:
             for i in range(10):
                 self.__papers.shuffle()
-                model_d2v.alpha = 0.025-0.002*i
+                model_d2v.alpha = 0.025 - 0.002 * i
                 model_d2v.min_alpha = model_d2v.alpha
-                model_d2v.train(self.__papers.papers)
-
+                model_d2v.train(
+                    self.__papers.papers, total_examples=model_d2v.corpus_count, epochs=model_d2v.iter)
+        else:
+            model_d2v.train(
+                self.__papers.papers, total_examples=model_d2v.corpus_count, epochs=model_d2v.iter)
         # Add similar from d2v edges to graph
         for paper in self.__papers.papers:
-            for node in model_d2v.docvecs.most_similar(paper.tags,topn=self.__topn):
+            for node in model_d2v.docvecs.most_similar(paper.tags, topn=self.__topn):
                 edge = (paper.tags[0], node[0])
                 self.__graph.add_edge(edge)
 
         # Final steps. Node2Vec
-        self.__paper2vec = Node2Vec(graph=self.__graph, **self.__w2v_dict)
+        self.__paper2vec = Node2Vec(**self.__w2v_dict)
+        self.__paper2vec.build_vocab(self.__graph)
+        for word in model_d2v.docvecs.doctags.keys():
+            if word in self.__paper2vec.wv.vocab:
+                self.__paper2vec.wv.syn0[self.__paper2vec.wv.vocab[word]
+                                         .index] = model_d2v.docvecs.doctag_syn0[model_d2v.docvecs._int_index(word)]
+        self.__paper2vec.train(self.__graph, epochs=self.__paper2vec.iter,
+                               start_alpha=self.__paper2vec.alpha, end_alpha=self.__paper2vec.min_alpha)
 
     def __getitem__(self, index):
-        if isinstance(index, [str, int]):
+        if isinstance(index, string_types):
             return self.__paper2vec[index]
         else:
             raise TypeError('index must be string or integer!')
+
 
 class _Papers(object):
     """A class for papers encapsulation.
@@ -177,6 +188,7 @@ class _Papers(object):
         papers: A datastructure (list of namen tuples, see Paper2Vec) with papers
         papers_file: A string with papers file name (see Paper2Vec)
     """
+
     def __init__(self, papers=None, papers_file=None):
         if papers is not None:
             self.__papers = papers
@@ -228,7 +240,7 @@ class _Papers(object):
         Returns:
             None
         """
-        if isinstance(papers_var, str):
+        if isinstance(papers_var, string_types):
             self.__papers = self.__parse_papers_file(papers_var)
         else:
             self.__papers = papers_var.copy()
@@ -246,5 +258,7 @@ class _Papers(object):
 
 
 """Exception when user did not provide full data"""
+
+
 class MissingData(Exception):
     pass
