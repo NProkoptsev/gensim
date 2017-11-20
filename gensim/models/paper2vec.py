@@ -72,7 +72,7 @@ class Paper2Vec(object):
 
         self.__papers_as_list = papers
         self.__papers_as_file = papers_file
-        self.__papers = _Papers()
+        self.__papers = _Papers(papers=papers, papers_file=papers_file)
         self.__citation_graph_as_list = citation_graph
         self.__citation_graph_as_file = citation_graph_file
 
@@ -116,7 +116,7 @@ class Paper2Vec(object):
             self.__citation_graph_as_file = citation_graph_file
         elif citation_graph is not None:
             if self.__reduce_memory:
-                self.citation_graph_file = None
+                self.__citation_graph_as_file = None
             self.__citation_graph_as_list = citation_graph
 
         self.__paper2vec = dict()
@@ -144,7 +144,8 @@ class Paper2Vec(object):
                 self.__citation_graph_as_list)
 
         # Build Doc2Vec
-        model_d2v = Doc2Vec(documents = self.__papers.papers, **self.__d2v_dict)
+        model_d2v = Doc2Vec(documents=self.__papers.papers, **self.__d2v_dict)
+        model_d2v.build_vocab(sentences=self.__papers.papers)
         if self.__seed is not None:
             random.seed(self.__seed)
 
@@ -172,6 +173,19 @@ class Paper2Vec(object):
         else:
             raise TypeError('index must be string or integer!')
 
+    @property
+    def pv(self):
+        """Returns model of the documents, which is actually Word2Vec model
+
+        It handles all interface provided by Word2Vec.wv variable, most_similar
+        for example.
+
+        Args:
+            None
+        Returns:
+
+        """
+        return self.__paper2vec.wv
 
 class _Papers(object):
     """A class for papers encapsulation.
