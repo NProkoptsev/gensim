@@ -153,7 +153,6 @@ class Paper2Vec(object):
             for paper in self.__papers.papers:
                 for node in model_d2v.docvecs.most_similar(paper.tags, topn=self.__topn):
                     edge = (int(paper.tags[0]), int(node[0]))
-                    print(edge)
                     self.__graph.add_edge(edge)
 
         # Final steps. Node2Vec
