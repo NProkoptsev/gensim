@@ -16,6 +16,8 @@ except ImportError:
     # failed... fall back to plain numpy (20-80x slower training than the above)
     MAX_WORDS_IN_BATCH = 10000
 
+import logging
+logger = logging.getLogger(__name__)
 
 class Paper2Vec(object):
     """Class for training paper graph.
@@ -58,15 +60,14 @@ class Paper2Vec(object):
     """
 
     def __init__(self, papers=None, citation_graph=None, papers_file=None,
-                 citation_graph_file=None, d2v_dict=None, w2v_dict=None, reduce_alpha=False,
-                 seed=None, reduce_memory=False, topn=2,
+                 citation_graph_file=None, d2v_dict=None, w2v_dict=None, reduce_memory=False,
+                 seed=None, topn=2,
                  **kwargs):
 
         self.__reduce_memory = reduce_memory
         self.__d2v_dict = d2v_dict
         self.__w2v_dict = w2v_dict
         self.__seed = seed
-        self.__reduce_alpha = reduce_alpha
         self.__topn = topn
 
         self.__papers_as_list = papers
@@ -143,26 +144,15 @@ class Paper2Vec(object):
                 self.__citation_graph_as_list)
 
         # Build Doc2Vec
-        model_d2v = Doc2Vec(**self.__d2v_dict)
-        model_d2v.build_vocab(self.__papers.papers)
+        model_d2v = Doc2Vec(documents = self.__papers.papers, **self.__d2v_dict)
         if self.__seed is not None:
             random.seed(self.__seed)
-        # Reduce alpha
-        if self.__reduce_alpha:
-            for i in range(10):
-                self.__papers.shuffle()
-                model_d2v.alpha = 0.025 - 0.002 * i
-                model_d2v.min_alpha = model_d2v.alpha
-                model_d2v.train(
-                    self.__papers.papers, total_examples=model_d2v.corpus_count, epochs=model_d2v.iter)
-        else:
-            model_d2v.train(
-                self.__papers.papers, total_examples=model_d2v.corpus_count, epochs=model_d2v.iter)
+
         # Add similar from d2v edges to graph
-        for paper in self.__papers.papers:
-            for node in model_d2v.docvecs.most_similar(paper.tags, topn=self.__topn):
-                edge = (paper.tags[0], node[0])
-                self.__graph.add_edge(edge)
+        # for paper in self.__papers.papers:
+        #     for node in model_d2v.docvecs.most_similar(paper.tags, topn=self.__topn):
+        #         edge = (int(paper.tags[0]), int(node[0]))
+        #         self.__graph.add_edge(edge)
 
         # Final steps. Node2Vec
         self.__paper2vec = Node2Vec(**self.__w2v_dict)
