@@ -222,6 +222,7 @@ class BiasedRandomWalkFactory(RandomWalkFactory):
         for _ in range(bulk_size):
             for vertex in self.graph.adj_list.keys():
                 sequnece.append(self.random_walk(vertex, length))
+        np.random.shuffle(sequnece)
         return sequnece
 
 

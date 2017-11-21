@@ -144,6 +144,7 @@ class Paper2Vec(object):
                 self.__citation_graph_as_list)
 
         # Build Doc2Vec
+        self.__papers.shuffle()
         model_d2v = Doc2Vec(documents=self.__papers.papers, **self.__d2v_dict)
         if self.__seed is not None:
             random.seed(self.__seed)
