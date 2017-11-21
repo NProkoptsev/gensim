@@ -8,7 +8,7 @@ import random
 from collections import defaultdict, namedtuple, Sequence
 from gensim.models.word2vec import Word2Vec
 from gensim.models.doc2vec import Doc2Vec
-from gensim.models.node2vec import GraphRandomWalk, Node2Vec
+from gensim.models.node2vec import RandomWalkFactory, Node2Vec
 from six import string_types
 try:
     from gensim.models.word2vec_inner import MAX_WORDS_IN_BATCH
@@ -137,10 +137,10 @@ class Paper2Vec(object):
 
         # Init citation graph
         if self.__citation_graph_as_file is not None:
-            self.__graph = GraphRandomWalk.from_filename(
+            self.__graph = RandomWalkFactory.from_filename(
                 self.__citation_graph_as_file)
         else:
-            self.__graph = GraphRandomWalk.from_edgelist(
+            self.__graph = RandomWalkFactory.from_edgelist(
                 self.__citation_graph_as_list)
 
         # Build Doc2Vec

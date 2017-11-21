@@ -14,7 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class GraphRandomWalk():
+class RandomWalkFactory():
     """
     Class for creating random walks on graph
     Args:
@@ -126,17 +126,17 @@ class GraphRandomWalk():
         return sequnece
 
 
-class GraphBiasedWalk(GraphRandomWalk):
+class BiasedRandomWalkFactory(RandomWalkFactory):
     """
     Class for making biased random walks on graph described
     Args:
-    graph : instance of GraphRandomWalk
+    graph : instance of RandomWalkFactory
     p : return parametr
     q : in-out parametr
     """
 
     def __init__(self, graph, p, q):
-        if not isinstance(graph, GraphRandomWalk):
+        if not isinstance(graph, RandomWalkFactory):
             raise Exception('Not correct graph')
         self.graph = graph
         self.probs = self.second_order_adj_list(p, q)
@@ -229,7 +229,7 @@ class Node2Vec(Word2Vec):
     """
     Class for training, using and evaluating neural networks described in https://arxiv.org/pdf/1607.00653.pdf
     Args:
-      graph : instance of GraphRandomWalk
+      graph : instance of RandomWalkFactory
       rw_length : length of random walk 
       bulk_size : number of random walks per node
     """
@@ -247,26 +247,33 @@ class Node2Vec(Word2Vec):
             self.train(graph, epochs=self.iter,
                        start_alpha=self.alpha, end_alpha=self.min_alpha)
 
-    def build_vocab(self, graph, keep_raw_vocab=False, update=False):
+    def build_vocab(self, graph, **kwargs):
         """
         Build vocabulary from frequencies of vertices in random walks, which we approximate with in degree of vertex
         Args:
-          graph : instance of GraphRandomWalk
+          graph : instance of RandomWalkFactory
+        """
+        self.sentences = graph.bulk_random_walk(self.rw_length, self.bulk_size)
+        super(Node2Vec, self).build_vocab(self.sentences, trim_rule=None, **kwargs )
+
+    def build_vocab_from_freq(self, graph, keep_raw_vocab=False, update=False):
+        """
+        Build vocabulary from frequencies of vertices in random walks, which we approximate with in degree of vertex
+        Args:
+          graph : instance of RandomWalkFactory
         """
         frequencies = graph.frequencies
         corpus_count = self.bulk_size * graph.vertices_count
         super(Node2Vec, self).build_vocab_from_freq(
             frequencies, keep_raw_vocab, corpus_count, None, update)
 
-    def build_vocab_from_freq(self, word_freq, keep_raw_vocab=False, corpus_count=None, trim_rule=None, update=False):
-        raise Exception('Not supported, use build_vocab() instead')
-
     def train(self, graph, **kwargs):
         """
         Update the model's neural weights from a list of random walks
         Args:
-          graph : instance of GraphRandomWalk
+          graph : instance of RandomWalkFactory
         """
-        sentences = graph.bulk_random_walk(self.rw_length, self.bulk_size)
+        if self.sentences is None:
+            self.sentences = graph.bulk_random_walk(self.rw_length, self.bulk_size)
         super(Node2Vec, self).train(
-            sentences, total_examples=self.corpus_count, **kwargs)
+            self.sentences, total_examples=self.corpus_count, **kwargs)
