@@ -27,8 +27,8 @@ contents_test = [paper(words=['119', '126', '177', '253', '352', '457', '508', '
 citation_test = [(31336, 1126012), (31336, 1061127), (1061127, 13195), (1061127, 37879), (1106406, 1126012)]
 
 # Test parameters
-d2v_params = {'alpha': 0.025, 'window': 10, 'min_count': 10, 'min_alpha': 0.025, 'size': 100}
-w2v_params = {'size': 100, 'window': 5}
+d2v_params = {'alpha': 0.025, 'window': 10, 'min_count': 0, 'min_alpha': 0.025, 'size': 100}
+w2v_params = {'size': 100, 'window': 10}
 
 class TestPaper2VecModel(unittest.TestCase):
 
