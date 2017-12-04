@@ -47,14 +47,6 @@ class Paper2Vec(object):
         __seed: An integer which will be set to random initialization
         __topn: An integer, number of neighbours in Doc2Vec to be added to
             citation graph.
-
-        __papers_as_list: List of papers represented as
-            [('words'=['word or num of word from BOW', ...], 'tags'=[ID]), # namedtuple
-                ...
-            )]
-        __papers_as_file: A string with the name of text file with the format
-            ID1 bag_of_words tag
-            ...
         __papers: _Papers class instance.
         __citation_graph_as_list: A list if tuples (edges) such as [(ID1, ID2), ...]
         __citation_graph_as_file: A string with the name of text file where there is an edge on every
@@ -96,8 +88,6 @@ class Paper2Vec(object):
         self.__seed = seed
         self.__topn = topn
 
-        # self.__papers_as_list = papers
-        # self.__papers_as_file = papers_file
         self.__papers = _Papers(papers=papers, papers_file=papers_file, seed=seed)
         self.__citation_graph_as_list = citation_graph
         self.__citation_graph_as_file = citation_graph_file
@@ -109,7 +99,7 @@ class Paper2Vec(object):
 
         DO NOT populate your memory with data, hence, use it if you
         want to change data processed.
-        Files have higher priority and will substutute given datastructures.
+        Files have higher priority and will substitute given datastructures.
         For example, when both `papers` and `papers_file` are set, the
         information will be taken from `papers_file`.
 
@@ -135,24 +125,6 @@ class Paper2Vec(object):
         if citation_graph_file:
             self.__citation_graph_as_file = citation_graph_file
 
-        # if papers_file is not None:
-        #     if self.__reduce_memory:
-        #         self.__papers_as_list = None
-        #     self.__papers_as_file = papers_file
-        # elif papers is not None:
-        #     if self.__reduce_memory:
-        #         self.__papers_as_file = None
-        #     self.__papers_as_list = papers
-        #
-        # if citation_graph_file is not None:
-        #     if self.__reduce_memory:
-        #         self.__citation_graph_as_list = None
-        #     self.__citation_graph_as_file = citation_graph_file
-        # elif citation_graph is not None:
-        #     if self.__reduce_memory:
-        #         self.__citation_graph_as_file = None
-        #     self.__citation_graph_as_list = citation_graph
-
     def train(self):
         """Start memory population with data and train models.
 
@@ -161,11 +133,6 @@ class Paper2Vec(object):
         Returns:
             None
         """
-        # Populate environment with parced data
-        # if self.__papers_as_file is not None:
-        #     self.__papers.papers = self.__papers_as_file
-        # else:
-        #     self.__papers.papers = self.__papers_as_list
 
         # Init citation graph
         if self.__citation_graph_as_file is not None:
@@ -178,8 +145,6 @@ class Paper2Vec(object):
         # Build Doc2Vec
         self.__papers.shuffle()
         model_d2v = Doc2Vec(documents=self.__papers.papers, **self.__d2v_params)
-        # if self.__seed is not None:
-        #     random.seed(self.__seed)
 
         # Add similar from d2v edges to graph
         if self.__topn:
@@ -225,7 +190,6 @@ class _Papers(object):
         papers: A datastructure (list of namen tuples, see Paper2Vec) with papers
         __papers: A string with papers file name (see Paper2Vec)
         __seed: An integer for reproducible tests
-
     """
 
     def __init__(self, papers=None, papers_file=None, seed=None):
@@ -243,14 +207,14 @@ class _Papers(object):
         self.__seed = seed
 
     def __parse_papers_file(self, papers_file):
-        """Processe `papers_file` into `papers`
+        """Processes `papers_file` into `papers`
         Idea of code from https://github.com/asxzy/paper2vec-gensim/blob/master/gensim.ipynb
 
         Args:
             papers_file: A string with papers file name (see Paper2Vec)
 
         Returns:
-            dataset: A datastructure (list of namen tuples, see Paper2Vec) with papers
+            dataset: A datastructure (list of named tuples, see Paper2Vec) with papers
         """
         dataset = []
         paper = namedtuple('paper', 'words tags')
@@ -306,6 +270,6 @@ class _Papers(object):
         random.shuffle(self.__papers)
 
 
-"""Exception when user did not provide full data"""
 class MissingData(Exception):
+    """Exception when user did not provide full data"""
     pass
