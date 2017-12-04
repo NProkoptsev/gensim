@@ -56,7 +56,7 @@ class Paper2Vec(object):
     """
 
     def __init__(self, papers=None, citation_graph=None, papers_file=None,
-                 citation_graph_file=None, d2v_params=None, n2v_params=None,
+                 citation_graph_file=None, d2v_params=dict(), n2v_params=dict(),
                  seed=None, topn=2,
                  **kwargs):
         """Paper2Vec initialization
