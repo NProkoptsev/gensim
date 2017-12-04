@@ -59,10 +59,12 @@ class Paper2Vec(object):
         __citation_graph_as_list: A list if tuples (edges) such as [(ID1, ID2), ...]
         __citation_graph_as_file: A string with the name of text file where there is an edge on every
             line just like ID1[space]ID2.
+        __paper2vec: The Node2Vec instance and actually paper2vec result
+        __graph: An instance of graph from RandomWalkFactory
     """
 
     def __init__(self, papers=None, citation_graph=None, papers_file=None,
-                 citation_graph_file=None, d2v_params=None, n2v_params=None, reduce_memory=False,
+                 citation_graph_file=None, d2v_params=None, n2v_params=None,
                  seed=None, topn=2,
                  **kwargs):
         """Paper2Vec initialization
@@ -89,17 +91,17 @@ class Paper2Vec(object):
                 line just like ID1[space]ID2.
         """
 
-        self.__reduce_memory = reduce_memory
         self.__d2v_params = d2v_params
         self.__n2v_params = n2v_params
         self.__seed = seed
         self.__topn = topn
 
-        self.__papers_as_list = papers
-        self.__papers_as_file = papers_file
-        self.__papers = _Papers(papers=papers, papers_file=papers_file)
+        # self.__papers_as_list = papers
+        # self.__papers_as_file = papers_file
+        self.__papers = _Papers(papers=papers, papers_file=papers_file, seed=seed)
         self.__citation_graph_as_list = citation_graph
         self.__citation_graph_as_file = citation_graph_file
+        self.__paper2vec = dict()
 
     def load_data(self, papers=None, citation_graph=None, papers_file=None,
                   citation_graph_file=None):
@@ -126,25 +128,30 @@ class Paper2Vec(object):
             None
         """
 
-        if papers_file is not None:
-            if self.__reduce_memory:
-                self.__papers_as_list = None
-            self.__papers_as_file = papers_file
-        elif papers is not None:
-            if self.__reduce_memory:
-                self.__papers_as_file = None
-            self.__papers_as_list = papers
-
-        if citation_graph_file is not None:
-            if self.__reduce_memory:
-                self.__citation_graph_as_list = None
-            self.__citation_graph_as_file = citation_graph_file
-        elif citation_graph is not None:
-            if self.__reduce_memory:
-                self.__citation_graph_as_file = None
+        if (papers_file is not None) or (papers is not None):
+            self.__papers = _Papers(papers=papers, papers_file=papers_file, seed=self.__seed)
+        if citation_graph:
             self.__citation_graph_as_list = citation_graph
+        if citation_graph_file:
+            self.__citation_graph_as_file = citation_graph_file
 
-        self.__paper2vec = dict()
+        # if papers_file is not None:
+        #     if self.__reduce_memory:
+        #         self.__papers_as_list = None
+        #     self.__papers_as_file = papers_file
+        # elif papers is not None:
+        #     if self.__reduce_memory:
+        #         self.__papers_as_file = None
+        #     self.__papers_as_list = papers
+        #
+        # if citation_graph_file is not None:
+        #     if self.__reduce_memory:
+        #         self.__citation_graph_as_list = None
+        #     self.__citation_graph_as_file = citation_graph_file
+        # elif citation_graph is not None:
+        #     if self.__reduce_memory:
+        #         self.__citation_graph_as_file = None
+        #     self.__citation_graph_as_list = citation_graph
 
     def train(self):
         """Start memory population with data and train models.
@@ -155,10 +162,10 @@ class Paper2Vec(object):
             None
         """
         # Populate environment with parced data
-        if self.__papers_as_file is not None:
-            self.__papers.papers = self.__papers_as_file
-        else:
-            self.__papers.papers = self.__papers_as_list
+        # if self.__papers_as_file is not None:
+        #     self.__papers.papers = self.__papers_as_file
+        # else:
+        #     self.__papers.papers = self.__papers_as_list
 
         # Init citation graph
         if self.__citation_graph_as_file is not None:
@@ -171,8 +178,8 @@ class Paper2Vec(object):
         # Build Doc2Vec
         self.__papers.shuffle()
         model_d2v = Doc2Vec(documents=self.__papers.papers, **self.__d2v_params)
-        if self.__seed is not None:
-            random.seed(self.__seed)
+        # if self.__seed is not None:
+        #     random.seed(self.__seed)
 
         # Add similar from d2v edges to graph
         if self.__topn:
@@ -216,23 +223,24 @@ class _Papers(object):
 
     Attributes:
         papers: A datastructure (list of namen tuples, see Paper2Vec) with papers
-        __papers: A datastructure (list of namen tuples, see Paper2Vec) with papers
-        A string with papers file name (see Paper2Vec)
+        __papers: A string with papers file name (see Paper2Vec)
+        __seed: An integer for reproducible tests
 
     """
 
-    def __init__(self, papers=None, papers_file=None):
+    def __init__(self, papers=None, papers_file=None, seed=None):
         """Initialization for _Papers
 
         Args:
             papers: A datastructure (list of namen tuples, see Paper2Vec) with papers
             papers_file: A string with papers file name (see Paper2Vec)
-
+            seed: An integer for reproducible tests
         """
         if papers is not None:
             self.__papers = papers
         elif papers_file is not None:
             self.__papers = self.__parse_papers_file(papers_file)
+        self.__seed = seed
 
     def __parse_papers_file(self, papers_file):
         """Processe `papers_file` into `papers`
@@ -293,11 +301,11 @@ class _Papers(object):
         Returns:
             None
         """
+        if self.__seed:
+            random.seed(self.__seed)
         random.shuffle(self.__papers)
 
 
 """Exception when user did not provide full data"""
-
-
 class MissingData(Exception):
     pass

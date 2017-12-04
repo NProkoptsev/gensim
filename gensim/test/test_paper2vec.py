@@ -28,7 +28,7 @@ citation_test = [(31336, 1126012), (31336, 1061127), (1061127, 13195), (1061127,
 
 # Test parameters
 d2v_params = {'alpha': 0.025, 'window': 10, 'min_count': 0, 'min_alpha': 0.025, 'size': 100}
-w2v_params = {'size': 100, 'window': 10}
+n2v_params = {'size': 100, 'window': 10}
 
 class TestPaper2VecModel(unittest.TestCase):
 
@@ -49,7 +49,7 @@ class TestPaper2VecModel(unittest.TestCase):
 
     def test_train(self):
         p2v = paper2vec.Paper2Vec(papers = contents_test, citation_graph = citation_test, 
-            d2v_dict = d2v_params, w2v_dict = w2v_params)
+            d2v_params = d2v_params, n2v_params = n2v_params)
         p2v.train()
     
     def test_save_model_to_file(self):
@@ -57,13 +57,13 @@ class TestPaper2VecModel(unittest.TestCase):
 
     def test_get_item(self):
         p2v = paper2vec.Paper2Vec(papers = contents_test, citation_graph = citation_test, 
-            d2v_dict = d2v_params, w2v_dict = w2v_params)
+            d2v_params = d2v_params, n2v_params = n2v_params)
         p2v.train()
         print(p2v['31336'])
 
     def test_get_similar(self):
         p2v = paper2vec.Paper2Vec(papers = contents_test, citation_graph = citation_test, 
-            d2v_dict = d2v_params, w2v_dict = w2v_params)
+            d2v_params = d2v_params, n2v_params= n2v_params)
         p2v.train()
         print(p2v.pv['31336'])
 
