@@ -68,13 +68,13 @@ class TestPaper2VecModel(unittest.TestCase):
         p2v = paper2vec.Paper2Vec(papers = contents_test, citation_graph = citation_test,
             d2v_params = d2v_params, n2v_params = n2v_params)
         p2v.train()
-        print(p2v['31336'])
+        print(p2v['1'])
 
     def test_get_similar(self):
         p2v = paper2vec.Paper2Vec(papers = contents_test, citation_graph = citation_test,
             d2v_params = d2v_params, n2v_params= n2v_params)
         p2v.train()
-        print(p2v.pv['31336'])
+        print(p2v.pv.most_similar('1'))
 
 if __name__ == "__main__":
     unittest.main()
