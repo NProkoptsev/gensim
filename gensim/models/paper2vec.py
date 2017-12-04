@@ -216,10 +216,19 @@ class _Papers(object):
 
     Attributes:
         papers: A datastructure (list of namen tuples, see Paper2Vec) with papers
-        papers_file: A string with papers file name (see Paper2Vec)
+        __papers: A datastructure (list of namen tuples, see Paper2Vec) with papers
+        A string with papers file name (see Paper2Vec)
+
     """
 
     def __init__(self, papers=None, papers_file=None):
+        """Initialization for _Papers
+
+        Args:
+            papers: A datastructure (list of namen tuples, see Paper2Vec) with papers
+            papers_file: A string with papers file name (see Paper2Vec)
+
+        """
         if papers is not None:
             self.__papers = papers
         elif papers_file is not None:
