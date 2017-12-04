@@ -1,12 +1,13 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """ Paper2Vec
 Encode papers into vectors!
 Implementation of the paper: https://arxiv.org/abs/1703.06587
 """
 from __future__ import division, print_function
-from abc import ABC, abstractmethod
 import random
-from collections import defaultdict, namedtuple, Sequence
-from gensim.models.word2vec import Word2Vec
+from collections import namedtuple
 from gensim.models.doc2vec import Doc2Vec
 from gensim.models.node2vec import RandomWalkFactory, Node2Vec
 from six import string_types
@@ -38,35 +39,59 @@ class Paper2Vec(object):
         all parameters which are taken by initialization except links to data.
 
     Attributes:
-        papers: Papers represented as
+        pv: a Word2Vec class, the model of the papers.
+        __reduce_memory: A boolean variable, set True will make to try hard
+            to reduce memory and delete unused data structures.
+        __d2v_params: A dictionary with parameters for Doc2Vec.
+        __n2v_params: A dictionary with parameters for Word2Vec.
+        __seed: An integer which will be set to random initialization
+        __topn: An integer, number of neighbours in Doc2Vec to be added to
+            citation graph.
+
+        __papers_as_list: List of papers represented as
             [('words'=['word or num of word from BOW', ...], 'tags'=[ID]), # namedtuple
                 ...
             )]
-        citation_graph: A list if tuples (edges) such as [(ID1, ID2), ...]
-        papers_file: A text file with the format
+        __papers_as_file: A string with the name of text file with the format
             ID1 bag_of_words tag
             ...
-        citation_graph_file: A text file where there is an edge on every line
-            just like ID1[space]ID2.
-        d2v_dict: A dictionary with parameters for Doc2Vec.
-        w2v_dict: A dictionary with parameters for Word2Vec.
-        reduce_alpha: A boolean variable for retraining model or not with
-            reducing alpha
-        seed: An integer which will be set to random initialization
-        reduce_memory: A boolean variable, set True will make to try hard
-            to reduce memory and delete unused data structures.
-        topn: An integer, number of neighbours in Doc2Vec to be added to
-            citation graph.
+        __papers: _Papers class instance.
+        __citation_graph_as_list: A list if tuples (edges) such as [(ID1, ID2), ...]
+        __citation_graph_as_file: A string with the name of text file where there is an edge on every
+            line just like ID1[space]ID2.
     """
 
     def __init__(self, papers=None, citation_graph=None, papers_file=None,
-                 citation_graph_file=None, d2v_dict=None, w2v_dict=None, reduce_memory=False,
+                 citation_graph_file=None, d2v_params=None, n2v_params=None, reduce_memory=False,
                  seed=None, topn=2,
                  **kwargs):
+        """Paper2Vec initialization
+
+        Args:
+            reduce_memory: A boolean variable, set True will make to try hard
+                to reduce memory and delete unused data structures.
+            d2v_params: A dictionary with parameters for Doc2Vec.
+            n2v_params: A dictionary with parameters for Word2Vec.
+            seed: An integer which will be set to random initialization
+            topn: An integer, number of neighbours in Doc2Vec to be added to
+                citation graph.
+
+            papers_as_list: List of papers represented as
+                [('words'=['word or num of word from BOW', ...], 'tags'=[ID]), # namedtuple
+                    ...
+                )]
+            papers_as_file: A string with the name of text file with the format
+                ID1 bag_of_words tag
+                ...
+            papers: _Papers class instance.
+            citation_graph_as_list: A list if tuples (edges) such as [(ID1, ID2), ...]
+            citation_graph_as_file: A string with the name of text file where there is an edge on every
+                line just like ID1[space]ID2.
+        """
 
         self.__reduce_memory = reduce_memory
-        self.__d2v_dict = d2v_dict
-        self.__w2v_dict = w2v_dict
+        self.__d2v_params = d2v_params
+        self.__n2v_params = n2v_params
         self.__seed = seed
         self.__topn = topn
 
@@ -145,7 +170,7 @@ class Paper2Vec(object):
 
         # Build Doc2Vec
         self.__papers.shuffle()
-        model_d2v = Doc2Vec(documents=self.__papers.papers, **self.__d2v_dict)
+        model_d2v = Doc2Vec(documents=self.__papers.papers, **self.__d2v_params)
         if self.__seed is not None:
             random.seed(self.__seed)
 
@@ -157,7 +182,7 @@ class Paper2Vec(object):
                     self.__graph.add_edge(edge)
 
         # Final steps. Node2Vec
-        self.__paper2vec = Node2Vec(**self.__w2v_dict)
+        self.__paper2vec = Node2Vec(**self.__n2v_params)
         self.__paper2vec.build_vocab(self.__graph)
         for word in model_d2v.docvecs.doctags.keys():
             if word in self.__paper2vec.wv.vocab:

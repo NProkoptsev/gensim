@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """
 Produce node vectors with deep learning via DeepWalk algorithm or Node2Vec algorithm
 [1] Bryan Perozzi, Rami Al-Rfou, Steven Skiena. DeepWalk: Online Learning of Social Representations
@@ -6,6 +9,7 @@ https://arxiv.org/abs/1403.6652
 https://arxiv.org/pdf/1607.00653.pdf
 """
 
+from __future__ import division, print_function
 from collections import defaultdict
 from gensim.models.word2vec import Word2Vec
 import numpy as np
