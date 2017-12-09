@@ -48,6 +48,10 @@ n2v_params = {'size': 100, 'window': 10}
 
 class TestPaper2VecModel(unittest.TestCase):
 
+    def test_init(self):
+        p2v = paper2vec.Paper2Vec(papers=contents_test, citation_graph=citation_test,
+            d2v_params=d2v_params, n2v_params=n2v_params)
+
     def test_train(self):
         p2v = paper2vec.Paper2Vec(papers = contents_test, citation_graph = citation_test,
             d2v_params = d2v_params, n2v_params = n2v_params)
