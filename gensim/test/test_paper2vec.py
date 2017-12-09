@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # encoding: utf-8
+    #def test_paper2vec_init(self):
+    #    p2v = paper2vec.Paper2Vec(papers_file = datapath_content, citation_graph_file = datapath_cites)
 
+    #def test_load_data(self):
+    #    p2v = paper2vec.Paper2Vec()
+    #    p2v.load_data(papers_file = datapath_content, citation_graph_file = datapath_cites)
 """
 Automated tests for paper2vec
 """
@@ -11,6 +16,8 @@ import os
 from gensim import utils
 from gensim.models import paper2vec
 from collections import namedtuple
+
+from numpy import size
 
 datapath_cites = os.path.join(os.path.dirname(__file__), "test_data", "cora.cites")
 datapath_content = os.path.join(os.path.dirname(__file__), "test_data", "cora.content")
@@ -41,40 +48,23 @@ n2v_params = {'size': 100, 'window': 10}
 
 class TestPaper2VecModel(unittest.TestCase):
 
-    def test_paper2vec_init(self):
-        p2v = paper2vec.Paper2Vec(papers_file = datapath_content, citation_graph_file = datapath_cites)
-
-    def test_load_data(self):
-        p2v = paper2vec.Paper2Vec()
-        p2v.load_data(papers_file = datapath_content, citation_graph_file = datapath_cites)
-
-    # Test training if initialized from files
-    #def test_train_from_files(self):
-    #    d2v_dict = {'alpha': 0.025, 'window': 10, 'min_count': 10, 'min_alpha': 0.025, 'size': 100}
-    #    w2v_dict = {'size': 100, 'window': 5}
-    #    p2v = paper2vec.Paper2Vec(papers_file = datapath_content, citation_graph_file = datapath_cites,
-    #    d2v_dict = d2v_dict, w2v_dict = w2v_dict)
-    #    p2v.train()
-
     def test_train(self):
         p2v = paper2vec.Paper2Vec(papers = contents_test, citation_graph = citation_test,
             d2v_params = d2v_params, n2v_params = n2v_params)
         p2v.train()
-
-    def test_save_model_to_file(self):
-        pass
-
-    def test_get_item(self):
-        p2v = paper2vec.Paper2Vec(papers = contents_test, citation_graph = citation_test,
-            d2v_params = d2v_params, n2v_params = n2v_params)
-        p2v.train()
-        print(p2v['1'])
+        self.assertEqual(size(p2v['1']), 100)
 
     def test_get_similar(self):
         p2v = paper2vec.Paper2Vec(papers = contents_test, citation_graph = citation_test,
             d2v_params = d2v_params, n2v_params= n2v_params)
         p2v.train()
-        print(p2v.pv.most_similar('1'))
+        self.assertEqual(size(p2v.pv.most_similar(positive='1')), 10)
+
+    #def test_get_similar_custom_topn(self):
+    #    p2v = paper2vec.Paper2Vec(papers = contents_test, citation_graph = citation_test,
+    #        d2v_params = d2v_params, n2v_params= n2v_params)
+    #    p2v.train()
+    #    self.assertEqual(size(p2v.pv.most_similar(positive='1', topn=7)), 7)
 
 if __name__ == "__main__":
     unittest.main()
